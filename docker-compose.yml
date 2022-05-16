@@ -1,0 +1,54 @@
+version: "3.1"
+
+services:
+  start_dependencies:
+    image: dadarek/wait-for-dependencies
+    depends_on:
+      - db
+      - redis
+    command: db:1433
+
+  db:
+    image: mcr.microsoft.com/mssql/server:latest
+    hostname: sqlserver
+    environment:
+      SA_PASSWORD: "Pay@2022"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    expose:
+      - 1433
+    networks:
+      - pay-network
+
+  redis:
+    container_name: redis_pay
+    hostname: redis
+    image: redis
+    ports: 
+      - "6379:6379"
+    networks:
+      - pay-network
+
+  payapi:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payapi
+    depends_on:
+      - start_dependencies
+    ports:
+      - "9000"
+    expose:
+      - 9000
+    networks:
+      - pay-network
+    env_file:
+      - local.env
+    environment:
+      - REDIS_HOST=redis
+      - SQL_CONNECTION=server=sqlserver,1433;database=Pay;User ID=SA;Password=Pay@2022
+
+networks: 
+  pay-network:
+      driver: bridge
